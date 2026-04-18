@@ -1,7 +1,10 @@
-﻿using VaultContentGen.Config;
+﻿using System.CommandLine;
+using VaultContentGen.Commands;
+using VaultContentGen.Config;
 
 var configService = ConfigService.CreateDefault();
-var config = configService.Load();
 
-Console.WriteLine($"Vault souce: {config.VaultSourcePath}");
-Console.WriteLine($"Hugo content: {config.HugoContentPath}");
+var rootCommand = new RootCommand("Generate Hugo content from an Obsidian vault");
+rootCommand.Subcommands.Add(ConfigCommands.Create(configService));
+
+await rootCommand.Parse(args).InvokeAsync();
