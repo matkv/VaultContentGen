@@ -23,13 +23,18 @@ public class ConfigServiceTests : IDisposable
         var original = new AppConfig
         {
             VaultSourcePath = "/home/matkv/obsidian/Notes/matkv.dev",
-            HugoContentPath = "/home/matkv/mysite/content"
+            HugoContentPath = "/home/matkv/mysite/content",
+            IgnoredFolders = new List<string> { "TEMPCLEANUP" },
+            SectionTypes = new Dictionary<string, string> { ["Library/Books"] = "Book" }
         };
 
         sut.Save(original);
         var loaded = sut.Load();
 
-        Assert.Equal(original, loaded);
+        Assert.Equal(original.VaultSourcePath, loaded.VaultSourcePath);
+        Assert.Equal(original.HugoContentPath, loaded.HugoContentPath);
+        Assert.Equal(original.IgnoredFolders, loaded.IgnoredFolders);
+        Assert.Equal(original.SectionTypes, loaded.SectionTypes);
     }
 
     public void Dispose()
