@@ -1,0 +1,24 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "generate",
+      "type": "coreclr",
+      "request": "launch",
+      "program": "${workspaceFolder}/src/VaultContentGen/bin/Debug/net10.0/vaultcontentgen",
+      "args": ["generate"],
+      "cwd": "${workspaceFolder}",
+      "stopAtEntry": false,
+      "console": "integratedTerminal"
+    },
+    {
+      "name": "scan",
+      "type": "coreclr",
+      "request": "launch",
+      "program": "${workspaceFolder}/src/VaultContentGen/bin/Debug/net10.0/vaultcontentgen",
+      "args": ["scan"],
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal"
+    }
+  ]
+}
