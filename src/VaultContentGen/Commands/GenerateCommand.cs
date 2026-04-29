@@ -34,7 +34,28 @@ public static class GenerateCommand
                 var writer = new HugoWriter(config);
                 writer.Write(structure);
 
-                Console.WriteLine("Done.");
+                var hugoSitePath = Path.GetDirectoryName(Path.TrimEndingDirectorySeparator(Path.GetFullPath(config.HugoContentPath)))!;
+                var publicPath = Path.Combine(hugoSitePath, "public");
+
+                if (Directory.Exists(publicPath))
+                {
+                    Console.WriteLine("Clearing public directory...");
+                    Directory.Delete(publicPath, recursive: true);
+                }
+
+                Console.WriteLine($"Running hugo serve in: {hugoSitePath}");
+                var process = new System.Diagnostics.Process
+                {
+                    StartInfo = new System.Diagnostics.ProcessStartInfo
+                    {
+                        FileName = "hugo",
+                        Arguments = "serve",
+                        WorkingDirectory = hugoSitePath,
+                        UseShellExecute = false,
+                    }
+                };
+                process.Start();
+                process.WaitForExit();
 
             }
             catch (System.Exception ex)

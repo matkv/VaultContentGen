@@ -40,8 +40,19 @@ public class VaultScanner(AppConfig config)
         {
             RootIndex = rootIndex,
             StandaloneFiles = standaloneFiles,
-            Sections = sections
+            Sections = sections,
+            Books = ScanBooks()
         };
+    }
+
+    private List<ObsidianFile> ScanBooks()
+    {
+        if (string.IsNullOrEmpty(config.BookSourcePath) || !Directory.Exists(config.BookSourcePath))
+            return [];
+
+        return Directory.GetFiles(config.BookSourcePath, "*.md")
+            .Select(f => ScanFile(f, ContentType.Book))
+            .ToList();
     }
 
     private ObsidianSection ScanSection(string sectionPath, string relativePath)
