@@ -17,7 +17,7 @@ public class HugoWriter(AppConfig config)
         Directory.CreateDirectory(config.HugoContentPath);
 
         if (structure.RootIndex is not null)
-            WriteSectionIndex(structure.RootIndex, "Home", config.HugoContentPath);
+            WriteSectionIndex(structure.RootIndex, "Home", config.HugoContentPath, ContentType.Standard);
 
         foreach (var file in structure.StandaloneFiles)
         {
@@ -68,7 +68,7 @@ public class HugoWriter(AppConfig config)
         var sectionPath = Path.Combine(parentPath, section.Name.ToLower());
         Directory.CreateDirectory(sectionPath);
 
-        WriteSectionIndex(section.SectionIndex, section.Name, sectionPath);
+        WriteSectionIndex(section.SectionIndex, section.Name, sectionPath, section.Type);
 
         foreach (var file in section.SectionFiles)
         {
@@ -80,7 +80,7 @@ public class HugoWriter(AppConfig config)
             WriteSection(sub, sectionPath, $"{relativePath}/{sub.Name}");
     }
 
-    private void WriteSectionIndex(ObsidianFile? index, string sectionName, string outputPath)
+    private void WriteSectionIndex(ObsidianFile? index, string sectionName, string outputPath, ContentType type)
     {
         var title = index is not null
             ? GetString(index, "title", sectionName)
@@ -100,7 +100,7 @@ public class HugoWriter(AppConfig config)
         if (index is not null && !string.IsNullOrEmpty(index.Body))
         {
             sb.AppendLine();
-            sb.Append(index.Body);
+            sb.Append(ProcessImageComments(index.Body, type));
         }
 
         File.WriteAllText(Path.Combine(outputPath, "_index.md"), sb.ToString());
@@ -109,8 +109,31 @@ public class HugoWriter(AppConfig config)
     private void WriteContentFile(ObsidianFile file, string outputPath)
     {
         var frontmatter = BuildTomlFrontmatter(file);
-        var content = frontmatter + Environment.NewLine + file.Body;
+        var body = ProcessImageComments(file.Body, file.Type);
+        var content = frontmatter + Environment.NewLine + body;
         File.WriteAllText(outputPath, content);
+    }
+
+    private static readonly Regex ImageCommentRegex = new(@"<!--\s*Image:\s*(.+?)\s*-->", RegexOptions.Compiled);
+
+    private string ProcessImageComments(string body, ContentType type)
+    {
+        return ImageCommentRegex.Replace(body, match =>
+        {
+            var relativePath = match.Groups[1].Value.Trim().Replace('\\', '/');
+            var sourcePath = Path.Combine(config.VaultSourcePath, relativePath);
+
+            if (!File.Exists(sourcePath))
+                return match.Value;
+
+            var fileName = Path.GetFileName(relativePath);
+            var typeFolder = type.ToString().ToLower();
+            var staticDest = Path.Combine(_hugoSitePath, "static", "images", typeFolder, fileName);
+            Directory.CreateDirectory(Path.GetDirectoryName(staticDest)!);
+            File.Copy(sourcePath, staticDest, overwrite: true);
+
+            return $"![{Path.GetFileNameWithoutExtension(fileName)}](/images/{typeFolder}/{fileName})";
+        });
     }
 
     private string BuildTomlFrontmatter(ObsidianFile file)
