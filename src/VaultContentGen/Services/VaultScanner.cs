@@ -36,23 +36,41 @@ public class VaultScanner(AppConfig config)
             }
         }
 
+        var (booksIndex, books) = ScanBooks();
+
+        booksIndex ??= sections
+            .SelectMany(s => s.SubSections)
+            .FirstOrDefault(s => s.Name.Equals("Books", StringComparison.OrdinalIgnoreCase))
+            ?.SectionIndex;
+
         return new ObsidianStructure
         {
             RootIndex = rootIndex,
             StandaloneFiles = standaloneFiles,
             Sections = sections,
-            Books = ScanBooks()
+            BooksIndex = booksIndex,
+            Books = books
         };
     }
 
-    private List<ObsidianFile> ScanBooks()
+    private (ObsidianFile? index, List<ObsidianFile> books) ScanBooks()
     {
         if (string.IsNullOrEmpty(config.BookSourcePath) || !Directory.Exists(config.BookSourcePath))
-            return [];
+            return (null, []);
 
-        return Directory.GetFiles(config.BookSourcePath, "*.md")
-            .Select(f => ScanFile(f, ContentType.Book))
-            .ToList();
+        ObsidianFile? index = null;
+        var books = new List<ObsidianFile>();
+
+        foreach (var f in Directory.GetFiles(config.BookSourcePath, "*.md"))
+        {
+            var file = ScanFile(f, ContentType.Book);
+            if (Path.GetFileName(f) == "Index.md")
+                index = file;
+            else
+                books.Add(file);
+        }
+
+        return (index, books);
     }
 
     private ObsidianSection ScanSection(string sectionPath, string relativePath)

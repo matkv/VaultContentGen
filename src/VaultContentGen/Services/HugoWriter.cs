@@ -28,16 +28,16 @@ public class HugoWriter(AppConfig config)
         foreach (var section in structure.Sections)
             WriteSection(section, config.HugoContentPath, section.Name);
 
-        if (structure.Books.Count > 0)
-            WriteBooks(structure.Books);
+        if (structure.Books.Count > 0 || structure.BooksIndex is not null)
+            WriteBooks(structure.BooksIndex, structure.Books);
     }
 
-    private void WriteBooks(List<ObsidianFile> books)
+    private void WriteBooks(ObsidianFile? booksIndex, List<ObsidianFile> books)
     {
         var booksPath = Path.Combine(config.HugoContentPath, "library", "books");
         Directory.CreateDirectory(booksPath);
 
-        File.WriteAllText(Path.Combine(booksPath, "_index.md"), "+++\ntitle = \"Books\"\n+++\n");
+        WriteSectionIndex(booksIndex, "Books", booksPath, ContentType.Book);
 
         var coversDestPath = Path.Combine(_hugoSitePath, "static", "covers");
         Directory.CreateDirectory(coversDestPath);
