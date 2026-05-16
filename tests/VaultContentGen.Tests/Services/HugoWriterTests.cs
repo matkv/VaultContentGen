@@ -82,6 +82,29 @@ public class HugoWriterTests : IDisposable
     }
 
     [Fact]
+    public void GardenFile_HasRootUrlInFrontmatter()
+    {
+        var structure = new ObsidianStructure
+        {
+            Sections =
+            [
+                new ObsidianSection
+                {
+                    Name = "Garden",
+                    SourcePath = Path.Combine(_vaultDir, "Garden"),
+                    Type = ContentType.Garden,
+                    SectionFiles = [MakeFile("My Entry.md", "body", ContentType.Garden)],
+                }
+            ],
+        };
+
+        CreateWriter().Write(structure);
+
+        var outputContent = File.ReadAllText(Path.Combine(HugoContentDir, "garden", "my-entry.md"));
+        Assert.Contains("url = \"/my-entry\"", outputContent);
+    }
+
+    [Fact]
     public void ImageComment_MissingSourceFile_CommentPreserved()
     {
         var structure = new ObsidianStructure

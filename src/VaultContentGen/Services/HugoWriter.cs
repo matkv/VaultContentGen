@@ -164,6 +164,9 @@ public class HugoWriter(AppConfig config)
         if (file.Type == ContentType.Project)
             AppendIfPresent(sb, file, "status");
 
+        if (file.Type == ContentType.Garden)
+            sb.AppendLine($"url = \"/{ToSlug(file.FileName)}\"");
+
         sb.AppendLine("+++");
         return sb.ToString();
     }

@@ -6,4 +6,5 @@ public enum ContentType
     Book,
     Log,
     Project,
+    Garden,
 }
