@@ -102,6 +102,45 @@ public class HugoWriterTests : IDisposable
 
         var outputContent = File.ReadAllText(Path.Combine(HugoContentDir, "garden", "my-entry.md"));
         Assert.Contains("url = \"/my-entry\"", outputContent);
+        Assert.Contains("index_entry = true", outputContent);
+    }
+
+    [Fact]
+    public void IndexSubsection_WrittenAtContentRoot()
+    {
+        var structure = new ObsidianStructure
+        {
+            Sections =
+            [
+                new ObsidianSection
+                {
+                    Name = "Garden",
+                    SourcePath = Path.Combine(_vaultDir, "Garden"),
+                    Type = ContentType.Index,
+                    SectionFiles = [],
+                    SubSections =
+                    [
+                        new ObsidianSection
+                        {
+                            Name = "Programming",
+                            SourcePath = Path.Combine(_vaultDir, "Garden", "Programming"),
+                            Type = ContentType.Standard,
+                            SectionFiles = [MakeFile("My Entry.md", "body", ContentType.Standard)],
+                            SubSections = [],
+                        }
+                    ],
+                }
+            ],
+        };
+
+        CreateWriter().Write(structure);
+
+        Assert.True(File.Exists(Path.Combine(HugoContentDir, "programming", "my-entry.md")));
+        Assert.False(File.Exists(Path.Combine(HugoContentDir, "index", "programming", "my-entry.md")));
+
+        var outputContent = File.ReadAllText(Path.Combine(HugoContentDir, "programming", "my-entry.md"));
+        Assert.DoesNotContain("url =", outputContent);
+        Assert.Contains("index_entry = true", outputContent);
     }
 
     [Fact]
