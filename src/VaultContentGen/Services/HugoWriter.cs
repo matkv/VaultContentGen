@@ -63,7 +63,7 @@ public class HugoWriter(AppConfig config)
         File.Copy(sourcePath, destPath, overwrite: true);
     }
 
-    private void WriteSection(ObsidianSection section, string parentPath, string relativePath, bool isIndexContent = false)
+    private void WriteSection(ObsidianSection section, string parentPath, string relativePath, bool isIndexContent = false, string indexPath = "")
     {
         var sectionPath = Path.Combine(parentPath, section.Name.ToLower());
         Directory.CreateDirectory(sectionPath);
@@ -71,11 +71,12 @@ public class HugoWriter(AppConfig config)
         WriteSectionIndex(section.SectionIndex, section.Name, sectionPath, section.Type);
 
         var indexContent = isIndexContent || section.Type == ContentType.Index;
+        var currentIndexPath = section.Type == ContentType.Index ? "/" : indexPath;
 
         foreach (var file in section.SectionFiles)
         {
             var outputPath = Path.Combine(sectionPath, ToSlug(file.FileName) + ".md");
-            WriteContentFile(file, outputPath, indexContent);
+            WriteContentFile(file, outputPath, indexContent, currentIndexPath);
         }
 
         var subParentPath = section.Type == ContentType.Index
@@ -83,7 +84,12 @@ public class HugoWriter(AppConfig config)
             : sectionPath;
 
         foreach (var sub in section.SubSections)
-            WriteSection(sub, subParentPath, $"{relativePath}/{sub.Name}", indexContent);
+        {
+            var subIndexPath = section.Type == ContentType.Index
+                ? $"/{sub.Name.ToLower()}"
+                : $"{currentIndexPath}/{sub.Name.ToLower()}";
+            WriteSection(sub, subParentPath, $"{relativePath}/{sub.Name}", indexContent, subIndexPath);
+        }
     }
 
     private void WriteSectionIndex(ObsidianFile? index, string sectionName, string outputPath, ContentType type)
@@ -112,9 +118,9 @@ public class HugoWriter(AppConfig config)
         File.WriteAllText(Path.Combine(outputPath, "_index.md"), sb.ToString());
     }
 
-    private void WriteContentFile(ObsidianFile file, string outputPath, bool isIndexContent = false)
+    private void WriteContentFile(ObsidianFile file, string outputPath, bool isIndexContent = false, string indexPath = "")
     {
-        var frontmatter = BuildTomlFrontmatter(file, isIndexContent);
+        var frontmatter = BuildTomlFrontmatter(file, isIndexContent, indexPath);
         var body = ProcessImageComments(file.Body, file.Type);
         var content = frontmatter + Environment.NewLine + body;
         File.WriteAllText(outputPath, content);
@@ -142,7 +148,7 @@ public class HugoWriter(AppConfig config)
         });
     }
 
-    private string BuildTomlFrontmatter(ObsidianFile file, bool isIndexContent = false)
+    private string BuildTomlFrontmatter(ObsidianFile file, bool isIndexContent = false, string indexPath = "")
     {
         var title = GetString(file, "title", Path.GetFileNameWithoutExtension(file.FileName));
         var sb = new System.Text.StringBuilder();
@@ -171,7 +177,10 @@ public class HugoWriter(AppConfig config)
             AppendIfPresent(sb, file, "status");
 
         if (isIndexContent)
+        {
             sb.AppendLine("index_entry = true");
+            sb.AppendLine($"section_path = \"{indexPath}\"");
+        }
 
         if (file.Type == ContentType.Index)
             sb.AppendLine($"url = \"/{ToSlug(file.FileName)}\"");

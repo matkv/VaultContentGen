@@ -103,6 +103,7 @@ public class HugoWriterTests : IDisposable
         var outputContent = File.ReadAllText(Path.Combine(HugoContentDir, "garden", "my-entry.md"));
         Assert.Contains("url = \"/my-entry\"", outputContent);
         Assert.Contains("index_entry = true", outputContent);
+        Assert.Contains("section_path = \"/\"", outputContent);
     }
 
     [Fact]
@@ -141,6 +142,7 @@ public class HugoWriterTests : IDisposable
         var outputContent = File.ReadAllText(Path.Combine(HugoContentDir, "programming", "my-entry.md"));
         Assert.DoesNotContain("url =", outputContent);
         Assert.Contains("index_entry = true", outputContent);
+        Assert.Contains("section_path = \"/programming\"", outputContent);
     }
 
     [Fact]
