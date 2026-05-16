@@ -82,7 +82,7 @@ public class HugoWriterTests : IDisposable
     }
 
     [Fact]
-    public void GardenFile_HasRootUrlInFrontmatter()
+    public void IndexFile_HasRootUrlInFrontmatter()
     {
         var structure = new ObsidianStructure
         {
@@ -92,8 +92,8 @@ public class HugoWriterTests : IDisposable
                 {
                     Name = "Garden",
                     SourcePath = Path.Combine(_vaultDir, "Garden"),
-                    Type = ContentType.Garden,
-                    SectionFiles = [MakeFile("My Entry.md", "body", ContentType.Garden)],
+                    Type = ContentType.Index,
+                    SectionFiles = [MakeFile("My Entry.md", "body", ContentType.Index)],
                 }
             ],
         };
