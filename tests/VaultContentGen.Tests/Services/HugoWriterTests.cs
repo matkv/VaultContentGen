@@ -161,4 +161,23 @@ public class HugoWriterTests : IDisposable
         var outputContent = File.ReadAllText(Path.Combine(HugoContentDir, "post.md"));
         Assert.Contains("<!-- Image: Attachments/Missing.png -->", outputContent);
     }
+
+    [Fact]
+    public void ImageComment_FilenameWithSpaces_UrlEncodedInOutput()
+    {
+        CreateVaultImage("Attachments/Symphony Series Collection.png");
+        var structure = new ObsidianStructure
+        {
+            StandaloneFiles =
+            [
+                MakeFile("Post.md", "<!-- Image: Attachments/Symphony Series Collection.png -->", ContentType.Log),
+            ],
+        };
+
+        CreateWriter().Write(structure);
+
+        var outputContent = File.ReadAllText(Path.Combine(HugoContentDir, "post.md"));
+        Assert.Contains("![Symphony Series Collection](/images/log/Symphony%20Series%20Collection.png)", outputContent);
+        Assert.True(File.Exists(Path.Combine(_hugoSiteDir, "static", "images", "log", "Symphony Series Collection.png")));
+    }
 }

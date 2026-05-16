@@ -144,7 +144,8 @@ public class HugoWriter(AppConfig config)
             Directory.CreateDirectory(Path.GetDirectoryName(staticDest)!);
             File.Copy(sourcePath, staticDest, overwrite: true);
 
-            return $"![{Path.GetFileNameWithoutExtension(fileName)}](/images/{typeFolder}/{fileName})";
+            var encodedFileName = Uri.EscapeDataString(fileName);
+            return $"![{Path.GetFileNameWithoutExtension(fileName)}](/images/{typeFolder}/{encodedFileName})";
         });
     }
 
