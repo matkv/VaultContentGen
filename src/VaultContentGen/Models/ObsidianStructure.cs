@@ -7,4 +7,6 @@ public record ObsidianStructure
     public List<ObsidianSection> Sections { get; init; } = [];
     public ObsidianFile? BooksIndex { get; init; }
     public List<ObsidianFile> Books { get; init; } = [];
+    public ObsidianFile? MoviesIndex { get; init; }
+    public List<ObsidianFile> Movies { get; init; } = [];
 }

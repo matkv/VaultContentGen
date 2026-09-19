@@ -36,12 +36,12 @@ public class VaultScanner(AppConfig config)
             }
         }
 
-        var (booksIndex, books) = ScanBooks();
+        var (booksIndex, books) = ScanCollection(config.BookSourcePath, ContentType.Book);
+        var (moviesIndex, allMovies) = ScanCollection(config.MovieSourcePath, ContentType.Movie);
+        var movies = allMovies.Where(IsPublishedMovie).ToList();
 
-        booksIndex ??= sections
-            .SelectMany(s => s.SubSections)
-            .FirstOrDefault(s => s.Name.Equals("Books", StringComparison.OrdinalIgnoreCase))
-            ?.SectionIndex;
+        booksIndex ??= FindSubSectionIndex(sections, "Books");
+        moviesIndex ??= FindSubSectionIndex(sections, "Movies-TV-Shows");
 
         return new ObsidianStructure
         {
@@ -49,29 +49,52 @@ public class VaultScanner(AppConfig config)
             StandaloneFiles = standaloneFiles,
             Sections = sections,
             BooksIndex = booksIndex,
-            Books = books
+            Books = books,
+            MoviesIndex = moviesIndex,
+            Movies = movies
         };
     }
 
-    private (ObsidianFile? index, List<ObsidianFile> books) ScanBooks()
+    private (ObsidianFile? index, List<ObsidianFile> files) ScanCollection(string sourcePath, ContentType contentType)
     {
-        if (string.IsNullOrEmpty(config.BookSourcePath) || !Directory.Exists(config.BookSourcePath))
+        if (string.IsNullOrEmpty(sourcePath) || !Directory.Exists(sourcePath))
             return (null, []);
 
         ObsidianFile? index = null;
-        var books = new List<ObsidianFile>();
+        var files = new List<ObsidianFile>();
 
-        foreach (var f in Directory.GetFiles(config.BookSourcePath, "*.md"))
+        foreach (var f in Directory.GetFiles(sourcePath, "*.md"))
         {
-            var file = ScanFile(f, ContentType.Book);
+            var file = ScanFile(f, contentType);
             if (Path.GetFileName(f) == "Index.md")
                 index = file;
             else
-                books.Add(file);
+                files.Add(file);
         }
 
-        return (index, books);
+        return (index, files);
     }
+
+    // Only watched, non-private movies/shows end up on the website.
+    private static bool IsPublishedMovie(ObsidianFile file)
+    {
+        var watched = file.FrontMatter.TryGetValue("status", out var status) && status switch
+        {
+            List<object> list => list.Any(s => s?.ToString() == "Watched"),
+            _ => status?.ToString() == "Watched"
+        };
+
+        var isPrivate = file.FrontMatter.TryGetValue("private", out var value)
+            && string.Equals(value?.ToString(), "true", StringComparison.OrdinalIgnoreCase);
+
+        return watched && !isPrivate;
+    }
+
+    private static ObsidianFile? FindSubSectionIndex(List<ObsidianSection> sections, string name) =>
+        sections
+            .SelectMany(s => s.SubSections)
+            .FirstOrDefault(s => s.Name.Equals(name, StringComparison.OrdinalIgnoreCase))
+            ?.SectionIndex;
 
     private ObsidianSection ScanSection(string sectionPath, string relativePath)
     {

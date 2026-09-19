@@ -17,13 +17,24 @@ public class VaultScannerTests : IDisposable
 
     private VaultScanner CreateScanner(
         List<string>? ignoredFolders = null,
-        Dictionary<string, string>? sectionTypes = null) =>
+        Dictionary<string, string>? sectionTypes = null,
+        string? movieSourcePath = null) =>
         new(new AppConfig
         {
             VaultSourcePath = _tempDir,
             IgnoredFolders = ignoredFolders ?? [],
-            SectionTypes = sectionTypes ?? []
+            SectionTypes = sectionTypes ?? [],
+            MovieSourcePath = movieSourcePath ?? string.Empty
         });
+
+    private static string MovieNote(string status, bool isPrivate = false) => $"""
+        ---
+        title: Test
+        status:
+          - {status}
+        private: {(isPrivate ? "true" : "false")}
+        ---
+        """;
 
     [Fact]
     public void Scan_RootIndexMd_ParsedAsRootIndex()
@@ -116,5 +127,35 @@ public class VaultScannerTests : IDisposable
         """);
         var result = CreateScanner().Scan();
         Assert.Equal("Now", result.StandaloneFiles[0].FrontMatter["title"].ToString());
+    }
+
+    [Fact]
+    public void Scan_Movies_OnlyWatchedIncluded()
+    {
+        CreateFile("Movies/Watched (2020).md", MovieNote("Watched"));
+        CreateFile("Movies/Later (2021).md", MovieNote("To-Watch"));
+        var result = CreateScanner(movieSourcePath: Path.Combine(_tempDir, "Movies")).Scan();
+        var movie = Assert.Single(result.Movies);
+        Assert.Equal("Watched (2020).md", movie.FileName);
+        Assert.Equal(ContentType.Movie, movie.Type);
+    }
+
+    [Fact]
+    public void Scan_Movies_PrivateExcluded()
+    {
+        CreateFile("Movies/Public (2020).md", MovieNote("Watched"));
+        CreateFile("Movies/Secret (2020).md", MovieNote("Watched", isPrivate: true));
+        var result = CreateScanner(movieSourcePath: Path.Combine(_tempDir, "Movies")).Scan();
+        var movie = Assert.Single(result.Movies);
+        Assert.Equal("Public (2020).md", movie.FileName);
+    }
+
+    [Fact]
+    public void Scan_Movies_IndexFromLibrarySubsection()
+    {
+        CreateFile("Library/Movies-TV-Shows/Index.md", "---\ntitle: Movies & TV Shows\n---\nIntro");
+        var result = CreateScanner().Scan();
+        Assert.NotNull(result.MoviesIndex);
+        Assert.Equal("Movies & TV Shows", result.MoviesIndex.FrontMatter["title"].ToString());
     }
 }

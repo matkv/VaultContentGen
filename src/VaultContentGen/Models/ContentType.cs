@@ -7,4 +7,5 @@ public enum ContentType
     Log,
     Project,
     Index,
+    Movie,
 }
