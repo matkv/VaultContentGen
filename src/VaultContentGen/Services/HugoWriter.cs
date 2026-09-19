@@ -206,13 +206,13 @@ public class HugoWriter(AppConfig config)
         if (file.Type == ContentType.Index)
             sb.AppendLine($"url = \"/{ToSlug(file.FileName)}\"");
 
-        // Reviews only appear in their list page, never as pages of their own.
+        // Reviews and log entries only appear in their list page, never as pages of their own.
         // Must stay last: everything after a TOML table header belongs to that table.
-        if (file.Type is ContentType.Book or ContentType.Movie)
+        if (file.Type is ContentType.Book or ContentType.Movie or ContentType.Log)
         {
             sb.AppendLine("[build]");
             sb.AppendLine("  render = \"never\"");
-            sb.AppendLine("  list = \"always\"");
+            sb.AppendLine("  list = \"local\"");
         }
 
         sb.AppendLine("+++");

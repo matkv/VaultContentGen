@@ -252,20 +252,29 @@ public class HugoWriterTests : IDisposable
     }
 
     [Fact]
-    public void BookAndMovie_HaveBuildRenderNever()
+    public void BookMovieAndLog_AreNotRenderedAsPages()
     {
         var structure = new ObsidianStructure
         {
             Books = [MakeFile("Some Book.md", "review", ContentType.Book)],
             Movies = [MakeMovie("Some Movie (2020).md", new Dictionary<string, object> { ["title"] = "Some Movie" })],
+            Sections =
+            [
+                new ObsidianSection
+                {
+                    Name = "Log",
+                    SourcePath = Path.Combine(_vaultDir, "Log"),
+                    Type = ContentType.Log,
+                    SectionFiles = [MakeFile("Some Entry.md", "log body", ContentType.Log)],
+                }
+            ],
         };
 
         CreateWriter().Write(structure);
 
-        var book = File.ReadAllText(Path.Combine(HugoContentDir, "library", "books", "some-book.md"));
-        var movie = File.ReadAllText(Path.Combine(HugoContentDir, "library", "movies-tv-shows", "some-movie-(2020).md"));
-        var expectedEnd = $"[build]{Environment.NewLine}  render = \"never\"{Environment.NewLine}  list = \"always\"{Environment.NewLine}+++";
-        Assert.Contains(expectedEnd, book);
-        Assert.Contains(expectedEnd, movie);
+        var expectedEnd = $"[build]{Environment.NewLine}  render = \"never\"{Environment.NewLine}  list = \"local\"{Environment.NewLine}+++";
+        Assert.Contains(expectedEnd, File.ReadAllText(Path.Combine(HugoContentDir, "library", "books", "some-book.md")));
+        Assert.Contains(expectedEnd, File.ReadAllText(Path.Combine(HugoContentDir, "library", "movies-tv-shows", "some-movie-(2020).md")));
+        Assert.Contains(expectedEnd, File.ReadAllText(Path.Combine(HugoContentDir, "log", "some-entry.md")));
     }
 }
