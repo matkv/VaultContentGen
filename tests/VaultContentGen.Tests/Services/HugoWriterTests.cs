@@ -15,7 +15,18 @@ public class HugoWriterTests : IDisposable
         {
             VaultSourcePath = _vaultDir,
             HugoContentPath = HugoContentDir,
+            MovieSourcePath = Path.Combine(_vaultDir, "Movies"),
         });
+
+    private ObsidianFile MakeMovie(string name, Dictionary<string, object> frontMatter) =>
+        new()
+        {
+            FileName = name,
+            SourcePath = Path.Combine(_vaultDir, "Movies", name),
+            Body = string.Empty,
+            FrontMatter = frontMatter,
+            Type = ContentType.Movie,
+        };
 
     private ObsidianFile MakeFile(string name, string body, ContentType type = ContentType.Standard) =>
         new()
@@ -179,5 +190,82 @@ public class HugoWriterTests : IDisposable
         var outputContent = File.ReadAllText(Path.Combine(HugoContentDir, "post.md"));
         Assert.Contains("![Symphony Series Collection](/images/log/Symphony%20Series%20Collection.png)", outputContent);
         Assert.True(File.Exists(Path.Combine(_hugoSiteDir, "static", "images", "log", "Symphony Series Collection.png")));
+    }
+
+    [Fact]
+    public void Movie_WrittenWithFrontmatterAndCover()
+    {
+        CreateVaultImage("Movies/Covers/dune-part-two-2024.jpg");
+        var structure = new ObsidianStructure
+        {
+            Movies =
+            [
+                MakeMovie("Dune Part Two (2024).md", new Dictionary<string, object>
+                {
+                    ["title"] = "Dune: Part Two",
+                    ["type"] = "Movie",
+                    ["year"] = "2024",
+                    ["rating"] = "8",
+                    ["date"] = "2024-03-09",
+                    ["cover"] = "Covers/dune-part-two-2024.jpg",
+                }),
+            ],
+        };
+
+        CreateWriter().Write(structure);
+
+        var outputContent = File.ReadAllText(
+            Path.Combine(HugoContentDir, "library", "movies-tv-shows", "dune-part-two-(2024).md"));
+        Assert.Contains("title = \"Dune: Part Two\"", outputContent);
+        Assert.Contains("date = \"2024-03-09\"", outputContent);
+        Assert.Contains("media_type = \"Movie\"", outputContent);
+        Assert.DoesNotContain("\ntype =", outputContent);
+        Assert.Contains("year = \"2024\"", outputContent);
+        Assert.Contains("rating = \"8\"", outputContent);
+        Assert.Contains("cover = \"/covers/movies-tv-shows/dune-part-two-2024.jpg\"", outputContent);
+        Assert.True(File.Exists(
+            Path.Combine(_hugoSiteDir, "static", "covers", "movies-tv-shows", "dune-part-two-2024.jpg")));
+    }
+
+    [Fact]
+    public void Movie_WithoutDate_HasNoDateField()
+    {
+        var structure = new ObsidianStructure
+        {
+            Movies =
+            [
+                MakeMovie("Breaking Bad (2008).md", new Dictionary<string, object>
+                {
+                    ["title"] = "Breaking Bad",
+                    ["type"] = "TV Show",
+                    ["date"] = null!,
+                }),
+            ],
+        };
+
+        CreateWriter().Write(structure);
+
+        var outputContent = File.ReadAllText(
+            Path.Combine(HugoContentDir, "library", "movies-tv-shows", "breaking-bad-(2008).md"));
+        Assert.DoesNotContain("date =", outputContent);
+        Assert.Contains("media_type = \"TV Show\"", outputContent);
+    }
+
+    [Fact]
+    public void BookAndMovie_HaveBuildRenderNever()
+    {
+        var structure = new ObsidianStructure
+        {
+            Books = [MakeFile("Some Book.md", "review", ContentType.Book)],
+            Movies = [MakeMovie("Some Movie (2020).md", new Dictionary<string, object> { ["title"] = "Some Movie" })],
+        };
+
+        CreateWriter().Write(structure);
+
+        var book = File.ReadAllText(Path.Combine(HugoContentDir, "library", "books", "some-book.md"));
+        var movie = File.ReadAllText(Path.Combine(HugoContentDir, "library", "movies-tv-shows", "some-movie-(2020).md"));
+        var expectedEnd = $"[build]{Environment.NewLine}  render = \"never\"{Environment.NewLine}  list = \"always\"{Environment.NewLine}+++";
+        Assert.Contains(expectedEnd, book);
+        Assert.Contains(expectedEnd, movie);
     }
 }

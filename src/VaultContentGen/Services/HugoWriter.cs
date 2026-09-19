@@ -29,33 +29,45 @@ public class HugoWriter(AppConfig config)
             WriteSection(section, config.HugoContentPath, section.Name);
 
         if (structure.Books.Count > 0 || structure.BooksIndex is not null)
-            WriteBooks(structure.BooksIndex, structure.Books);
+            WriteCollection(structure.BooksIndex, structure.Books, ContentType.Book,
+                "Books", Path.Combine("library", "books"), config.BookSourcePath, coverSubfolder: "");
+
+        if (structure.Movies.Count > 0 || structure.MoviesIndex is not null)
+            WriteCollection(structure.MoviesIndex, structure.Movies, ContentType.Movie,
+                "Movies & TV Shows", Path.Combine("library", "movies-tv-shows"), config.MovieSourcePath,
+                coverSubfolder: MovieCoverSubfolder);
     }
 
-    private void WriteBooks(ObsidianFile? booksIndex, List<ObsidianFile> books)
+    private const string MovieCoverSubfolder = "movies-tv-shows";
+
+    private void WriteCollection(ObsidianFile? index, List<ObsidianFile> files, ContentType type,
+        string sectionName, string relativeOutputPath, string sourcePath, string coverSubfolder)
     {
-        var booksPath = Path.Combine(config.HugoContentPath, "library", "books");
-        Directory.CreateDirectory(booksPath);
+        var outputDir = Path.Combine(config.HugoContentPath, relativeOutputPath);
+        Directory.CreateDirectory(outputDir);
 
-        WriteSectionIndex(booksIndex, "Books", booksPath, ContentType.Book);
+        WriteSectionIndex(index, sectionName, outputDir, type);
 
-        var coversDestPath = Path.Combine(_hugoSitePath, "static", "covers");
+        var coversDestPath = Path.Combine(_hugoSitePath, "static", "covers", coverSubfolder);
         Directory.CreateDirectory(coversDestPath);
 
-        foreach (var book in books)
+        foreach (var file in files)
         {
-            CopyBookCover(book, coversDestPath);
-            var outputPath = Path.Combine(booksPath, ToSlug(book.FileName) + ".md");
-            WriteContentFile(book, outputPath);
+            if (type == ContentType.Movie && string.IsNullOrEmpty(GetString(file, "date", string.Empty)))
+                Console.WriteLine($"Warning: '{file.FileName}' has no date, it will show up as \"Undated\".");
+
+            CopyCover(file, sourcePath, coversDestPath);
+            var outputPath = Path.Combine(outputDir, ToSlug(file.FileName) + ".md");
+            WriteContentFile(file, outputPath);
         }
     }
 
-    private void CopyBookCover(ObsidianFile book, string coversDestPath)
+    private static void CopyCover(ObsidianFile file, string sourceDir, string coversDestPath)
     {
-        if (!book.FrontMatter.TryGetValue("cover", out var coverValue) || coverValue == null)
+        if (!file.FrontMatter.TryGetValue("cover", out var coverValue) || coverValue == null)
             return;
 
-        var sourcePath = Path.Combine(config.BookSourcePath, coverValue.ToString()!);
+        var sourcePath = Path.Combine(sourceDir, coverValue.ToString()!);
         if (!File.Exists(sourcePath))
             return;
 
@@ -171,7 +183,15 @@ public class HugoWriter(AppConfig config)
             AppendIfPresent(sb, file, "rating");
             AppendIfPresent(sb, file, "year");
             AppendTomlArray(sb, file, "status");
-            AppendBookCover(sb, file);
+            AppendCover(sb, file, string.Empty);
+        }
+
+        if (file.Type == ContentType.Movie)
+        {
+            AppendAs(sb, file, "type", "media_type"); // Hugo reserves `type`
+            AppendIfPresent(sb, file, "year");
+            AppendIfPresent(sb, file, "rating");
+            AppendCover(sb, file, MovieCoverSubfolder);
         }
 
         if (file.Type == ContentType.Project)
@@ -186,15 +206,27 @@ public class HugoWriter(AppConfig config)
         if (file.Type == ContentType.Index)
             sb.AppendLine($"url = \"/{ToSlug(file.FileName)}\"");
 
+        // Reviews only appear in their list page, never as pages of their own.
+        // Must stay last: everything after a TOML table header belongs to that table.
+        if (file.Type is ContentType.Book or ContentType.Movie)
+        {
+            sb.AppendLine("[build]");
+            sb.AppendLine("  render = \"never\"");
+            sb.AppendLine("  list = \"always\"");
+        }
+
         sb.AppendLine("+++");
         return sb.ToString();
     }
 
-    private static void AppendIfPresent(System.Text.StringBuilder sb, ObsidianFile file, string key)
+    private static void AppendIfPresent(System.Text.StringBuilder sb, ObsidianFile file, string key) =>
+        AppendAs(sb, file, key, key);
+
+    private static void AppendAs(System.Text.StringBuilder sb, ObsidianFile file, string key, string outputKey)
     {
         var value = GetString(file, key, string.Empty);
         if (!string.IsNullOrEmpty(value))
-            sb.AppendLine($"{key} = \"{value}\"");
+            sb.AppendLine($"{outputKey} = \"{value}\"");
     }
 
     private static void AppendTomlArray(System.Text.StringBuilder sb, ObsidianFile file, string key)
@@ -209,13 +241,14 @@ public class HugoWriter(AppConfig config)
         sb.AppendLine($"{key} = [{string.Join(", ", items)}]");
     }
 
-    private static void AppendBookCover(System.Text.StringBuilder sb, ObsidianFile file)
+    private static void AppendCover(System.Text.StringBuilder sb, ObsidianFile file, string coverSubfolder)
     {
         if (!file.FrontMatter.TryGetValue("cover", out var value) || value == null)
             return;
 
         var fileName = Path.GetFileName(value.ToString()!);
-        sb.AppendLine($"cover = \"/covers/{fileName}\"");
+        var urlPath = string.IsNullOrEmpty(coverSubfolder) ? fileName : $"{coverSubfolder}/{fileName}";
+        sb.AppendLine($"cover = \"/covers/{urlPath}\"");
     }
 
     private static string GetString(ObsidianFile file, string key, string fallback) =>
