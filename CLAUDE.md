@@ -26,7 +26,18 @@ dotnet run --project src/VaultContentGen -- config set --vault-path /path/to/vau
 
 # Scan vault structure
 dotnet run --project src/VaultContentGen -- scan
+
+# Generate Hugo content, then clear <site>/public and run `hugo serve` (blocks until hugo exits)
+dotnet run --project src/VaultContentGen -- generate
+
+# Generate Hugo content only and exit (no public/ cleanup, no hugo); for automation
+dotnet run --project src/VaultContentGen -- generate --no-serve
+
+# Release build (used by the update-matkv-dev skill via bin/Release/net10.0/vaultcontentgen)
+dotnet build -c Release src/VaultContentGen
 ```
+
+`generate` returns a non-zero exit code if the config is missing/invalid or generation fails.
 
 Config is persisted to `~/.config/VaultContentGen/config.json` (or OS equivalent `ApplicationData` path).
 
@@ -34,7 +45,7 @@ Config is persisted to `~/.config/VaultContentGen/config.json` (or OS equivalent
 
 The project follows a simple layered structure:
 
-- **`Program.cs`** — wires up `System.CommandLine` with two top-level commands: `config` and `scan`
+- **`Program.cs`** — wires up `System.CommandLine` with three top-level commands: `config`, `scan` and `generate`
 - **`Commands/`** — static command factories; each returns a `Command` object with its subcommands and actions
 - **`Config/`** — `AppConfig` (record) holds all settings; `ConfigService` serializes/deserializes it as JSON
 - **`Models/`** — immutable records representing the scanned vault: `ObsidianStructure` → `ObsidianSection` (recursive, with `SubSections`) → `ObsidianFile`

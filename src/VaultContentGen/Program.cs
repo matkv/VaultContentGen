@@ -9,4 +9,4 @@ rootCommand.Subcommands.Add(ConfigCommands.Create(configService));
 rootCommand.Subcommands.Add(ScanCommand.Create(configService));
 rootCommand.Subcommands.Add(GenerateCommand.Create(configService));
 
-await rootCommand.Parse(args).InvokeAsync();
+return await rootCommand.Parse(args).InvokeAsync();
